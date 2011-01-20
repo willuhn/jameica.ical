@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/service/impl/IcalServiceImpl.java,v $
- * $Revision: 1.1 $
- * $Date: 2011/01/20 18:37:06 $
+ * $Revision: 1.2 $
+ * $Date: 2011/01/20 23:56:17 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -19,6 +19,7 @@ import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Date;
 
+import de.willuhn.io.IOUtil;
 import de.willuhn.jameica.ical.Settings;
 import de.willuhn.jameica.ical.io.IcalWriter;
 import de.willuhn.jameica.ical.service.IcalService;
@@ -86,7 +87,7 @@ public class IcalServiceImpl implements IcalService
   /**
    * @see de.willuhn.jameica.ical.service.IcalService#run()
    */
-  public void run() throws RemoteException
+  public synchronized void run() throws RemoteException
   {
     if (!this.isStarted())
     {
@@ -122,6 +123,14 @@ public class IcalServiceImpl implements IcalService
     
     try
     {
+      // Nein. Wir muessen hier direkt in die Datei schreiben.
+      // Sicheres Schreiben (erst in Temp-Datei schreiben, dann
+      // alte Datei loeschen und Temp-Datei in neue umbenennen)
+      // koennen wir hier nicht machen, weil sich dabei das
+      // ggf. offene Filehandle in den Clients aendern wuerde,
+      // die den Kalender importiert haben. Falls die naemlich
+      // das Handle offen halten, zeigt deren Handle dann auf die
+      // geloeschte Datei.
       os = new BufferedOutputStream(new FileOutputStream(file));
       writer.write(os);
     }
@@ -131,17 +140,7 @@ public class IcalServiceImpl implements IcalService
     }
     finally
     {
-      if (os != null)
-      {
-        try
-        {
-          os.close();
-        }
-        catch (Exception e)
-        {
-          Logger.error("unable to close stream to " + file,e);
-        }
-      }
+      IOUtil.close(os);
     }
   }
 }
@@ -150,7 +149,11 @@ public class IcalServiceImpl implements IcalService
 
 /**********************************************************************
  * $Log: IcalServiceImpl.java,v $
- * Revision 1.1  2011/01/20 18:37:06  willuhn
+ * Revision 1.2  2011/01/20 23:56:17  willuhn
+ * @N Scheduler zum automatischen Speichern alle 30 Minuten
+ * @C Support fuer leere Kalender-Datei
+ *
+ * Revision 1.1  2011-01-20 18:37:06  willuhn
  * @N initial checkin
  *
  * Revision 1.2  2011-01-20 00:40:01  willuhn

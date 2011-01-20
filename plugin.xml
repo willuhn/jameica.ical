@@ -18,7 +18,8 @@
   </classfinder>
 
   <services>
-    <service name="ical" depends="" autostart="true" class="de.willuhn.jameica.ical.service.IcalService" />
+    <service name="ical"      depends=""     autostart="true" class="de.willuhn.jameica.ical.service.IcalService" />
+    <service name="scheduler" depends="ical" autostart="true" class="de.willuhn.jameica.ical.service.SchedulerService" />
   </services>
   
   <extensions>

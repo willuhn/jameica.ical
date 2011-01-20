@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.1 $
- * $Date: 2011/01/20 18:37:06 $
+ * $Revision: 1.2 $
+ * $Date: 2011/01/20 23:56:18 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -25,6 +25,7 @@ import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Action;
 import net.fortuna.ical4j.model.property.CalScale;
 import net.fortuna.ical4j.model.property.Description;
+import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.ProdId;
 import net.fortuna.ical4j.model.property.Uid;
 import net.fortuna.ical4j.model.property.Version;
@@ -32,6 +33,7 @@ import de.willuhn.jameica.gui.calendar.Appointment;
 import de.willuhn.jameica.gui.calendar.AppointmentProvider;
 import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
 import de.willuhn.jameica.plugin.AbstractPlugin;
+import de.willuhn.jameica.plugin.Manifest;
 import de.willuhn.jameica.system.Application;
 import de.willuhn.logging.Logger;
 
@@ -78,6 +80,7 @@ public class IcalWriter
     
     for (AbstractPlugin plugin:plugins)
     {
+      Manifest mf = plugin.getManifest();
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(plugin);
       for (AppointmentProvider p:providers)
       {
@@ -89,6 +92,8 @@ public class IcalWriter
             try
             {
               VEvent ve = new VEvent(new net.fortuna.ical4j.model.Date(a.getDate()),a.getName());
+              ve.getProperties().add(new Organizer(mf.getName()));
+              
               String uid = a.getUid();
               if (uid == null || uid.length() == 0)
                 uid = a.getName() + "/" + a.getDate();
@@ -133,19 +138,17 @@ public class IcalWriter
    */
   public void write(OutputStream os) throws IOException
   {
-    if (this.cal.getComponents().size() == 0)
-    {
-      // Wenn ich das nicht fange, fliegt sonst eine "ValidationException: Calendar must contain at least one component".
-      // Eigentlich sollte in dem Fall ein leerer Kalender geschrieben werden. Dazu muesste ich
-      // aber im Konstruktor von CalendarOutputter das validating ausschalten. Was wiederrum
-      // auch nicht schoen ist. Daher lass ich das erstmal so.
-      Logger.debug("calendar empty");
-      return;
-    }
+    // Wenn wir keine Termine haben, muessen wir die Validierung ausschalten.
+    // Andernfalls fliegt eine "ValidationException: Calendar must contain at least one component".
+    // Die Kalender-Datei duerfen wir natuerlich auch nicht loeschen - daher muessen wir
+    // eine leere anlegen.
+    boolean validate = (this.cal.getComponents().size() > 0);
+
     try
     {
-      CalendarOutputter co = new CalendarOutputter();
+      CalendarOutputter co = new CalendarOutputter(validate);
       co.output(this.cal,os);
+      Logger.info("calendar written");
     }
     catch (ValidationException ve)
     {
@@ -159,7 +162,11 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
- * Revision 1.1  2011/01/20 18:37:06  willuhn
+ * Revision 1.2  2011/01/20 23:56:18  willuhn
+ * @N Scheduler zum automatischen Speichern alle 30 Minuten
+ * @C Support fuer leere Kalender-Datei
+ *
+ * Revision 1.1  2011-01-20 18:37:06  willuhn
  * @N initial checkin
  *
  * Revision 1.4  2011-01-20 00:55:15  willuhn
