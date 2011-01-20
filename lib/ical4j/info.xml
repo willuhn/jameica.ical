@@ -1,0 +1,8 @@
+<info>
+  <name>iCal4j</name>
+  <description>
+    iCal4j is a Java API that provides support for the iCalendar specification as defined in RFC2445.
+  </description>
+  <url>http://wiki.modularity.net.au/ical4j/index.php?title=Main_Page</url>
+  <license>iCal4j - see attached LICENSE</license>
+</info>
