@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/messaging/IcalMessageConsumer.java,v $
- * $Revision: 1.1 $
- * $Date: 2011/01/20 18:37:05 $
+ * $Revision: 1.2 $
+ * $Date: 2011/01/21 10:21:06 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -48,8 +48,8 @@ public class IcalMessageConsumer implements MessageConsumer
     SystemMessage msg = (SystemMessage) message;
     int code = msg.getStatusCode();
     
-    // Fuer den Fall, dass es kuenftig noch weitere geben wird.
-    if (code != SystemMessage.SYSTEM_SHUTDOWN && code != SystemMessage.SYSTEM_STARTED)
+    // Nur beim Shutdown
+    if (code != SystemMessage.SYSTEM_SHUTDOWN)
       return;
     
     IcalService service = (IcalService) Application.getServiceFactory().lookup(Plugin.class,"ical");
@@ -62,7 +62,10 @@ public class IcalMessageConsumer implements MessageConsumer
 
 /**********************************************************************
  * $Log: IcalMessageConsumer.java,v $
- * Revision 1.1  2011/01/20 18:37:05  willuhn
+ * Revision 1.2  2011/01/21 10:21:06  willuhn
+ * @C Nur beim Shutdown (und ueber Scheduler) speichern. Beim Start verzoegert das unnoetig den Aufbau der Grafik. Und es macht wenig Sinn, weil zu dem Zeitpunkt ohnehin noch keine Aenderungen vorliegen
+ *
+ * Revision 1.1  2011-01-20 18:37:05  willuhn
  * @N initial checkin
  *
  * Revision 1.1  2011-01-20 00:40:02  willuhn
