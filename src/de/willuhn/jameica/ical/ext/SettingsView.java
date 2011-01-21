@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/ext/SettingsView.java,v $
- * $Revision: 1.1 $
- * $Date: 2011/01/20 18:37:06 $
+ * $Revision: 1.2 $
+ * $Date: 2011/01/21 11:17:10 $
  * $Author: willuhn $
  * $Locker:  $
  * $State: Exp $
@@ -42,7 +42,7 @@ import de.willuhn.logging.Logger;
 import de.willuhn.util.I18N;
 
 /**
- * Erweitert die View mit dem System-Einstellungen um die Update-Optionen.
+ * Erweitert die View mit dem System-Einstellungen um die Kalender-Optionen.
  */
 public class SettingsView implements Extension
 {
@@ -249,7 +249,10 @@ public class SettingsView implements Extension
 
 /*********************************************************************
  * $Log: SettingsView.java,v $
- * Revision 1.1  2011/01/20 18:37:06  willuhn
+ * Revision 1.2  2011/01/21 11:17:10  willuhn
+ * *** empty log message ***
+ *
+ * Revision 1.1  2011-01-20 18:37:06  willuhn
  * @N initial checkin
  *
  *********************************************************************/
