@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.2 $
- * $Date: 2011/01/20 23:56:18 $
+ * $Revision: 1.3 $
+ * $Date: 2011/01/25 10:17:42 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -14,7 +14,9 @@ package de.willuhn.jameica.ical.io;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
@@ -50,6 +52,7 @@ public class IcalWriter
     System.setProperty("net.fortuna.ical4j.timezone.date.floating","true");
   }
   
+  private Map<String,Integer> uidMap = new HashMap<String,Integer>();
   private Calendar cal = null;
   
   public IcalWriter()
@@ -97,6 +100,17 @@ public class IcalWriter
               String uid = a.getUid();
               if (uid == null || uid.length() == 0)
                 uid = a.getName() + "/" + a.getDate();
+              
+              // Checken, ob's die UID schon gibt. Wenn ja, haengen wir noch
+              // einen eigenen Zaehler dran, um sicherzustellen, dass die UID
+              // nie doppelt auftritt.
+              Integer i = uidMap.get(uid);
+              if (i == null) i = 0; // neue UID, vormerken
+              else           i = new Integer(i+1); // UID bekannt, Wert erhoehen
+              
+              uidMap.put(uid,i);    // neue ID speichern
+              uid = uid + "/" + i;  // an UID anhaengen
+              
               ve.getProperties().add(new Uid(uid));
               
               String desc = a.getDescription();
@@ -162,7 +176,10 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
- * Revision 1.2  2011/01/20 23:56:18  willuhn
+ * Revision 1.3  2011/01/25 10:17:42  willuhn
+ * @B http://www.willuhn.de/blog/index.php?/archives/544-jameica.ical-Termine-aus-Hibiscus-exportieren.html#c1249
+ *
+ * Revision 1.2  2011-01-20 23:56:18  willuhn
  * @N Scheduler zum automatischen Speichern alle 30 Minuten
  * @C Support fuer leere Kalender-Datei
  *
