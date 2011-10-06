@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.3 $
- * $Date: 2011/01/25 10:17:42 $
+ * $Revision: 1.4 $
+ * $Date: 2011/10/06 10:49:47 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -55,6 +55,9 @@ public class IcalWriter
   private Map<String,Integer> uidMap = new HashMap<String,Integer>();
   private Calendar cal = null;
   
+  /**
+   * ct.
+   */
   public IcalWriter()
   {
     this.cal = new Calendar();
@@ -87,6 +90,17 @@ public class IcalWriter
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(plugin);
       for (AppointmentProvider p:providers)
       {
+        ////////////////////////////////////////////////////////////////////////
+        // COMPAT Kompatibilitaet zu Hibiscus 2.0
+        try
+        {
+          if (!AppointmentProviderRegistry.isEnabled(p))
+            continue;
+        }
+        catch (NoSuchMethodError e) {}
+        //
+        ////////////////////////////////////////////////////////////////////////
+        
         try
         {
           List<Appointment> appointments = p.getAppointments(from,to);
@@ -176,7 +190,10 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
- * Revision 1.3  2011/01/25 10:17:42  willuhn
+ * Revision 1.4  2011/10/06 10:49:47  willuhn
+ * @N Nur noch Provider exportieren, die aktiviert sind - mit Abwaertskompatibilitaet
+ *
+ * Revision 1.3  2011-01-25 10:17:42  willuhn
  * @B http://www.willuhn.de/blog/index.php?/archives/544-jameica.ical-Termine-aus-Hibiscus-exportieren.html#c1249
  *
  * Revision 1.2  2011-01-20 23:56:18  willuhn
