@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.4 $
- * $Date: 2011/10/06 10:49:47 $
+ * $Revision: 1.5 $
+ * $Date: 2011/10/07 11:16:51 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -34,8 +34,10 @@ import net.fortuna.ical4j.model.property.Version;
 import de.willuhn.jameica.gui.calendar.Appointment;
 import de.willuhn.jameica.gui.calendar.AppointmentProvider;
 import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
+import de.willuhn.jameica.gui.calendar.ReminderAppointmentProvider;
 import de.willuhn.jameica.plugin.AbstractPlugin;
 import de.willuhn.jameica.plugin.Manifest;
+import de.willuhn.jameica.services.BeanService;
 import de.willuhn.jameica.system.Application;
 import de.willuhn.logging.Logger;
 
@@ -84,6 +86,20 @@ public class IcalWriter
 
     Logger.info("adding range " + from + " - " + to);
     
+    ////////////////////////////////////////////////////////////////////////
+    // COMPAT Kompatibilitaet zu Jameica 2.0
+    
+    // Den Jameica-eigenen Kalender noch hinzufuegen
+    try
+    {
+      BeanService service = Application.getBootLoader().getBootable(BeanService.class);
+      AppointmentProvider p = service.get(ReminderAppointmentProvider.class);
+      count += this.add(Application.getManifest(),p,from,to);
+    }
+    catch (Throwable t) {}
+    //
+    ////////////////////////////////////////////////////////////////////////
+
     for (AbstractPlugin plugin:plugins)
     {
       Manifest mf = plugin.getManifest();
@@ -91,7 +107,7 @@ public class IcalWriter
       for (AppointmentProvider p:providers)
       {
         ////////////////////////////////////////////////////////////////////////
-        // COMPAT Kompatibilitaet zu Hibiscus 2.0
+        // COMPAT Kompatibilitaet zu Jameica 2.0
         try
         {
           if (!AppointmentProviderRegistry.isEnabled(p))
@@ -101,61 +117,78 @@ public class IcalWriter
         //
         ////////////////////////////////////////////////////////////////////////
         
-        try
-        {
-          List<Appointment> appointments = p.getAppointments(from,to);
-          for (Appointment a:appointments)
-          {
-            try
-            {
-              VEvent ve = new VEvent(new net.fortuna.ical4j.model.Date(a.getDate()),a.getName());
-              ve.getProperties().add(new Organizer(mf.getName()));
-              
-              String uid = a.getUid();
-              if (uid == null || uid.length() == 0)
-                uid = a.getName() + "/" + a.getDate();
-              
-              // Checken, ob's die UID schon gibt. Wenn ja, haengen wir noch
-              // einen eigenen Zaehler dran, um sicherzustellen, dass die UID
-              // nie doppelt auftritt.
-              Integer i = uidMap.get(uid);
-              if (i == null) i = 0; // neue UID, vormerken
-              else           i = new Integer(i+1); // UID bekannt, Wert erhoehen
-              
-              uidMap.put(uid,i);    // neue ID speichern
-              uid = uid + "/" + i;  // an UID anhaengen
-              
-              ve.getProperties().add(new Uid(uid));
-              
-              String desc = a.getDescription();
-              if (desc != null)
-                ve.getProperties().add(new Description(desc));
-
-              if (a.hasAlarm())
-              {
-                VAlarm alarm = new VAlarm(new Dur(0,0,-15,0)); // 15 Minuten vorher "-PT15M"
-                alarm.getProperties().add(new Description(a.getName()));
-                alarm.getProperties().add(Action.DISPLAY);
-                ve.getAlarms().add(alarm);
-              }
-              
-              this.cal.getComponents().add(ve);
-              count++;
-            }
-            catch (Exception e)
-            {
-              Logger.error("error while adding appointment " + a.getDate() + ": " + a.getName(),e);
-            }
-          }
-        }
-        catch (Exception e)
-        {
-          Logger.error("error while fetching appointments from " + p.getName(),e);
-        }
+        count += this.add(mf,p,from,to);
       }
     }
     
     Logger.info("added " + count + " events");
+  }
+  
+  /**
+   * Fuegt die Termine des Appointment-Providers hinzu.
+   * @param mf das Manifest.
+   * @param p der Provider.
+   * @param from Beginn des Zeitraumes.
+   * @param to Ende des Zeitraumes.
+   * @return Anzahl der hinzugefuegten Termine.
+   */
+  private int add(Manifest mf, AppointmentProvider p, Date from, Date to)
+  {
+    int count = 0;
+    
+    try
+    {
+      List<Appointment> appointments = p.getAppointments(from,to);
+      for (Appointment a:appointments)
+      {
+        try
+        {
+          VEvent ve = new VEvent(new net.fortuna.ical4j.model.Date(a.getDate()),a.getName());
+          ve.getProperties().add(new Organizer(mf.getName()));
+          
+          String uid = a.getUid();
+          if (uid == null || uid.length() == 0)
+            uid = a.getName() + "/" + a.getDate();
+          
+          // Checken, ob's die UID schon gibt. Wenn ja, haengen wir noch
+          // einen eigenen Zaehler dran, um sicherzustellen, dass die UID
+          // nie doppelt auftritt.
+          Integer i = uidMap.get(uid);
+          if (i == null) i = 0; // neue UID, vormerken
+          else           i = new Integer(i+1); // UID bekannt, Wert erhoehen
+          
+          uidMap.put(uid,i);    // neue ID speichern
+          uid = uid + "/" + i;  // an UID anhaengen
+          
+          ve.getProperties().add(new Uid(uid));
+          
+          String desc = a.getDescription();
+          if (desc != null)
+            ve.getProperties().add(new Description(desc));
+
+          if (a.hasAlarm())
+          {
+            VAlarm alarm = new VAlarm(new Dur(0,0,-15,0)); // 15 Minuten vorher "-PT15M"
+            alarm.getProperties().add(new Description(a.getName()));
+            alarm.getProperties().add(Action.DISPLAY);
+            ve.getAlarms().add(alarm);
+          }
+          
+          this.cal.getComponents().add(ve);
+          count++;
+        }
+        catch (Exception e)
+        {
+          Logger.error("error while adding appointment " + a.getDate() + ": " + a.getName(),e);
+        }
+      }
+    }
+    catch (Exception e)
+    {
+      Logger.error("error while fetching appointments from " + p.getName(),e);
+    }
+    
+    return count;
   }
   
   /**
@@ -190,7 +223,10 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
- * Revision 1.4  2011/10/06 10:49:47  willuhn
+ * Revision 1.5  2011/10/07 11:16:51  willuhn
+ * @N Jameica-interne Reminder ebenfalls exportieren
+ *
+ * Revision 1.4  2011-10-06 10:49:47  willuhn
  * @N Nur noch Provider exportieren, die aktiviert sind - mit Abwaertskompatibilitaet
  *
  * Revision 1.3  2011-01-25 10:17:42  willuhn
