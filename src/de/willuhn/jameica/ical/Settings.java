@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/Settings.java,v $
- * $Revision: 1.1 $
- * $Date: 2011/01/20 18:37:06 $
+ * $Revision: 1.2 $
+ * $Date: 2012/03/28 22:28:12 $
  * $Author: willuhn $
  * $Locker:  $
  * $State: Exp $
@@ -19,7 +19,6 @@ import java.util.List;
 
 import de.willuhn.jameica.gui.calendar.AppointmentProvider;
 import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
-import de.willuhn.jameica.plugin.AbstractPlugin;
 import de.willuhn.jameica.plugin.PluginLoader;
 import de.willuhn.jameica.plugin.PluginResources;
 import de.willuhn.jameica.system.Application;
@@ -84,11 +83,11 @@ public class Settings
    * Liefert eine Liste der Plugins, zu denen Termine exportiert werden sollen.
    * @return Liste der Plugins, zu denen Termine exportiert werden sollen.
    */
-  public static List<AbstractPlugin> getPlugins()
+  public static List<de.willuhn.jameica.plugin.Plugin> getPlugins()
   {
     PluginLoader loader = Application.getPluginLoader();
     
-    List<AbstractPlugin> list = new ArrayList<AbstractPlugin>();
+    List<de.willuhn.jameica.plugin.Plugin> list = new ArrayList<de.willuhn.jameica.plugin.Plugin>();
     String[] names = SETTINGS.getList("ical.plugins",new String[0]);
 
     int loaded = 0;
@@ -117,7 +116,7 @@ public class Settings
    * Speichert die Liste der Plugins, zu denen Termine exportiert werden sollen.
    * @param plugins Liste der Plugins, zu denen Termine exportiert werden sollen.
    */
-  public static void setPlugins(List<AbstractPlugin> plugins)
+  public static void setPlugins(List<de.willuhn.jameica.plugin.Plugin> plugins)
   {
     if (plugins == null || plugins.size() == 0)
     {
@@ -126,7 +125,7 @@ public class Settings
     }
     
     List<String> classes = new ArrayList<String>();
-    for (AbstractPlugin p:plugins)
+    for (de.willuhn.jameica.plugin.Plugin p:plugins)
     {
       // Checken, ob das Plugin ueberhaupt AppointmentProvider hat
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(p);
@@ -145,7 +144,11 @@ public class Settings
 
 /*********************************************************************
  * $Log: Settings.java,v $
- * Revision 1.1  2011/01/20 18:37:06  willuhn
+ * Revision 1.2  2012/03/28 22:28:12  willuhn
+ * @N Einfuehrung eines neuen Interfaces "Plugin", welches von "AbstractPlugin" implementiert wird. Es dient dazu, kuenftig auch Jameica-Plugins zu unterstuetzen, die selbst gar keinen eigenen Java-Code mitbringen sondern nur ein Manifest ("plugin.xml") und z.Bsp. Jars oder JS-Dateien. Plugin-Autoren muessen lediglich darauf achten, dass die Jameica-Funktionen, die bisher ein Object vom Typ "AbstractPlugin" zuruecklieferten, jetzt eines vom Typ "Plugin" liefern.
+ * @C "getClassloader()" verschoben von "plugin.getRessources().getClassloader()" zu "manifest.getClassloader()" - der Zugriffsweg ist kuerzer. Die alte Variante existiert weiterhin, ist jedoch als deprecated markiert.
+ *
+ * Revision 1.1  2011-01-20 18:37:06  willuhn
  * @N initial checkin
  *
  **********************************************************************/

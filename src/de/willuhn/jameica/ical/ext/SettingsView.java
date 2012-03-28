@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/ext/SettingsView.java,v $
- * $Revision: 1.2 $
- * $Date: 2011/01/21 11:17:10 $
+ * $Revision: 1.3 $
+ * $Date: 2012/03/28 22:28:12 $
  * $Author: willuhn $
  * $Locker:  $
  * $State: Exp $
@@ -174,8 +174,8 @@ public class SettingsView implements Extension
     plugins.setSummary(false);
 
     // Daten hinzufuegen
-    List<AbstractPlugin> list = Application.getPluginLoader().getInstalledPlugins();
-    for (AbstractPlugin p:list)
+    List<de.willuhn.jameica.plugin.Plugin> list = Application.getPluginLoader().getInstalledPlugins();
+    for (de.willuhn.jameica.plugin.Plugin p:list)
     {
       // Checken, ob es ueberhaupt Termine unterstuetzt
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(p);
@@ -249,7 +249,11 @@ public class SettingsView implements Extension
 
 /*********************************************************************
  * $Log: SettingsView.java,v $
- * Revision 1.2  2011/01/21 11:17:10  willuhn
+ * Revision 1.3  2012/03/28 22:28:12  willuhn
+ * @N Einfuehrung eines neuen Interfaces "Plugin", welches von "AbstractPlugin" implementiert wird. Es dient dazu, kuenftig auch Jameica-Plugins zu unterstuetzen, die selbst gar keinen eigenen Java-Code mitbringen sondern nur ein Manifest ("plugin.xml") und z.Bsp. Jars oder JS-Dateien. Plugin-Autoren muessen lediglich darauf achten, dass die Jameica-Funktionen, die bisher ein Object vom Typ "AbstractPlugin" zuruecklieferten, jetzt eines vom Typ "Plugin" liefern.
+ * @C "getClassloader()" verschoben von "plugin.getRessources().getClassloader()" zu "manifest.getClassloader()" - der Zugriffsweg ist kuerzer. Die alte Variante existiert weiterhin, ist jedoch als deprecated markiert.
+ *
+ * Revision 1.2  2011-01-21 11:17:10  willuhn
  * *** empty log message ***
  *
  * Revision 1.1  2011-01-20 18:37:06  willuhn

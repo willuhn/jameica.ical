@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.5 $
- * $Date: 2011/10/07 11:16:51 $
+ * $Revision: 1.6 $
+ * $Date: 2012/03/28 22:28:12 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -35,8 +35,8 @@ import de.willuhn.jameica.gui.calendar.Appointment;
 import de.willuhn.jameica.gui.calendar.AppointmentProvider;
 import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
 import de.willuhn.jameica.gui.calendar.ReminderAppointmentProvider;
-import de.willuhn.jameica.plugin.AbstractPlugin;
 import de.willuhn.jameica.plugin.Manifest;
+import de.willuhn.jameica.plugin.Plugin;
 import de.willuhn.jameica.services.BeanService;
 import de.willuhn.jameica.system.Application;
 import de.willuhn.logging.Logger;
@@ -74,7 +74,7 @@ public class IcalWriter
    * @param from Start-Datum.
    * @param to End-Datum.
    */
-  public void addRange(List<AbstractPlugin> plugins, Date from, Date to)
+  public void addRange(List<Plugin> plugins, Date from, Date to)
   {
     if (plugins == null || plugins.size() == 0)
     {
@@ -100,7 +100,7 @@ public class IcalWriter
     //
     ////////////////////////////////////////////////////////////////////////
 
-    for (AbstractPlugin plugin:plugins)
+    for (Plugin plugin:plugins)
     {
       Manifest mf = plugin.getManifest();
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(plugin);
@@ -223,7 +223,11 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
- * Revision 1.5  2011/10/07 11:16:51  willuhn
+ * Revision 1.6  2012/03/28 22:28:12  willuhn
+ * @N Einfuehrung eines neuen Interfaces "Plugin", welches von "AbstractPlugin" implementiert wird. Es dient dazu, kuenftig auch Jameica-Plugins zu unterstuetzen, die selbst gar keinen eigenen Java-Code mitbringen sondern nur ein Manifest ("plugin.xml") und z.Bsp. Jars oder JS-Dateien. Plugin-Autoren muessen lediglich darauf achten, dass die Jameica-Funktionen, die bisher ein Object vom Typ "AbstractPlugin" zuruecklieferten, jetzt eines vom Typ "Plugin" liefern.
+ * @C "getClassloader()" verschoben von "plugin.getRessources().getClassloader()" zu "manifest.getClassloader()" - der Zugriffsweg ist kuerzer. Die alte Variante existiert weiterhin, ist jedoch als deprecated markiert.
+ *
+ * Revision 1.5  2011-10-07 11:16:51  willuhn
  * @N Jameica-interne Reminder ebenfalls exportieren
  *
  * Revision 1.4  2011-10-06 10:49:47  willuhn
