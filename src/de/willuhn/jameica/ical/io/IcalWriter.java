@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.7 $
- * $Date: 2012/03/29 20:44:28 $
+ * $Revision: 1.8 $
+ * $Date: 2012/03/29 20:44:58 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -88,8 +88,8 @@ public class IcalWriter
     
     // Den Jameica-eigenen Kalender noch hinzufuegen
     BeanService service = Application.getBootLoader().getBootable(BeanService.class);
-    AppointmentProvider p = service.get(ReminderAppointmentProvider.class);
-    count += this.add(Application.getManifest(),p,from,to);
+    AppointmentProvider ap = service.get(ReminderAppointmentProvider.class);
+    count += this.add(Application.getManifest(),ap,from,to);
 
     for (Plugin plugin:plugins)
     {
@@ -205,6 +205,9 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
+ * Revision 1.8  2012/03/29 20:44:58  willuhn
+ * *** empty log message ***
+ *
  * Revision 1.7  2012/03/29 20:44:28  willuhn
  * @R Kompatibilitaetscode zu Jameica 2.0 entfernt
  *
