@@ -1,7 +1,7 @@
 /**********************************************************************
  * $Source: /cvsroot/jameica/jameica.ical/src/de/willuhn/jameica/ical/io/IcalWriter.java,v $
- * $Revision: 1.6 $
- * $Date: 2012/03/28 22:28:12 $
+ * $Revision: 1.7 $
+ * $Date: 2012/03/29 20:44:28 $
  * $Author: willuhn $
  *
  * Copyright (c) by willuhn - software & services
@@ -86,19 +86,10 @@ public class IcalWriter
 
     Logger.info("adding range " + from + " - " + to);
     
-    ////////////////////////////////////////////////////////////////////////
-    // COMPAT Kompatibilitaet zu Jameica 2.0
-    
     // Den Jameica-eigenen Kalender noch hinzufuegen
-    try
-    {
-      BeanService service = Application.getBootLoader().getBootable(BeanService.class);
-      AppointmentProvider p = service.get(ReminderAppointmentProvider.class);
-      count += this.add(Application.getManifest(),p,from,to);
-    }
-    catch (Throwable t) {}
-    //
-    ////////////////////////////////////////////////////////////////////////
+    BeanService service = Application.getBootLoader().getBootable(BeanService.class);
+    AppointmentProvider p = service.get(ReminderAppointmentProvider.class);
+    count += this.add(Application.getManifest(),p,from,to);
 
     for (Plugin plugin:plugins)
     {
@@ -106,17 +97,8 @@ public class IcalWriter
       List<AppointmentProvider> providers = AppointmentProviderRegistry.getAppointmentProviders(plugin);
       for (AppointmentProvider p:providers)
       {
-        ////////////////////////////////////////////////////////////////////////
-        // COMPAT Kompatibilitaet zu Jameica 2.0
-        try
-        {
-          if (!AppointmentProviderRegistry.isEnabled(p))
-            continue;
-        }
-        catch (NoSuchMethodError e) {}
-        //
-        ////////////////////////////////////////////////////////////////////////
-        
+        if (!AppointmentProviderRegistry.isEnabled(p))
+          continue;
         count += this.add(mf,p,from,to);
       }
     }
@@ -223,6 +205,9 @@ public class IcalWriter
 
 /**********************************************************************
  * $Log: IcalWriter.java,v $
+ * Revision 1.7  2012/03/29 20:44:28  willuhn
+ * @R Kompatibilitaetscode zu Jameica 2.0 entfernt
+ *
  * Revision 1.6  2012/03/28 22:28:12  willuhn
  * @N Einfuehrung eines neuen Interfaces "Plugin", welches von "AbstractPlugin" implementiert wird. Es dient dazu, kuenftig auch Jameica-Plugins zu unterstuetzen, die selbst gar keinen eigenen Java-Code mitbringen sondern nur ein Manifest ("plugin.xml") und z.Bsp. Jars oder JS-Dateien. Plugin-Autoren muessen lediglich darauf achten, dass die Jameica-Funktionen, die bisher ein Object vom Typ "AbstractPlugin" zuruecklieferten, jetzt eines vom Typ "Plugin" liefern.
  * @C "getClassloader()" verschoben von "plugin.getRessources().getClassloader()" zu "manifest.getClassloader()" - der Zugriffsweg ist kuerzer. Die alte Variante existiert weiterhin, ist jedoch als deprecated markiert.
