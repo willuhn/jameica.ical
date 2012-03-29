@@ -9,7 +9,7 @@
   <homepage>http://www.willuhn.de/products/jameica</homepage>
   <license>GPL - http://www.gnu.org/copyleft/gpl.html</license>
 
-  <requires jameica="1.11+">
+  <requires jameica="2.3.0+">
   </requires>
 
   <classfinder>
