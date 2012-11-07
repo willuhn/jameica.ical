@@ -3,6 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jameica"/>
-	<classpathentry kind="lib" path="lib/ical4j/ical4j-1.0-rc3.jar"/>
+	<classpathentry kind="lib" path="lib/ical4j/ical4j-1.0-rc3.jar" sourcepath="lib.src/ical4j/ical4j-1.0-rc3.src.zip"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

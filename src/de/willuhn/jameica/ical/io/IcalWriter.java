@@ -12,14 +12,19 @@
 package de.willuhn.jameica.ical.io;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.ComponentList;
 import net.fortuna.ical4j.model.Dur;
 import net.fortuna.ical4j.model.ValidationException;
 import net.fortuna.ical4j.model.component.VAlarm;
@@ -29,8 +34,13 @@ import net.fortuna.ical4j.model.property.CalScale;
 import net.fortuna.ical4j.model.property.Description;
 import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.ProdId;
+import net.fortuna.ical4j.model.property.Trigger;
 import net.fortuna.ical4j.model.property.Uid;
 import net.fortuna.ical4j.model.property.Version;
+
+import org.apache.commons.lang.ObjectUtils;
+
+import de.willuhn.jameica.gui.calendar.AbstractAppointment;
 import de.willuhn.jameica.gui.calendar.Appointment;
 import de.willuhn.jameica.gui.calendar.AppointmentProvider;
 import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
@@ -54,18 +64,65 @@ public class IcalWriter
     System.setProperty("net.fortuna.ical4j.timezone.date.floating","true");
   }
   
-  private Map<String,Integer> uidMap = new HashMap<String,Integer>();
   private Calendar cal = null;
   
+  private Map<String,Integer> uidMap = new HashMap<String,Integer>();
+  private HashMap<String, VEvent> lookup = new HashMap<String, VEvent>();
+
   /**
    * ct.
    */
   public IcalWriter()
   {
+    this(null);
+  }
+  
+  /**
+   * ct.
+   * @param is Liest alle Termine aus einer existierenden Calendar-Date ein.
+   * Beim Schreiben neuer Termine mittels {@link IcalWriter#addRange(List, Date, Date)}
+   * werden die hier eingelesenene Termine dann wiederverwendet, wenn
+   * sie hinreichend mit den neuen uebereinstimmen. Damit koennen kleinere
+   * Aenderungen, die der User zwischenzeitlich in seinem Kalender-Programm
+   * vorgenommen hat (wie etwa bei einem Alarm auf "Snooze" zu klicken)
+   * beibehalten.
+   * Der Stream wird vom IcalWriter NICHT geschlossen.
+   */
+  public IcalWriter(InputStream is)
+  {
     this.cal = new Calendar();
     this.cal.getProperties().add(new ProdId("-//Jameica " + Application.getManifest().getVersion() + "/iCal4j 1.0//DE"));
     this.cal.getProperties().add(Version.VERSION_2_0);
     this.cal.getProperties().add(CalScale.GREGORIAN);
+
+    if (is != null)
+    {
+      Logger.info("try to parse existing file");
+      try
+      {
+        CalendarBuilder builder = new CalendarBuilder();
+        Calendar old = builder.build(is);
+        
+        // Jetzt bauen wir noch eine HashMap aus den UIDs, damit wir existierende
+        // Eintraege schnell wiederfinden koennen
+        Iterator i = old.getComponents().iterator();
+        while (i.hasNext())
+        {
+          Object comp = i.next();
+          if (!(comp instanceof VEvent))
+            continue;
+          
+          VEvent event = (VEvent) comp;
+          Uid uidobj = event.getUid();
+          String uid = uidobj.getValue();
+          this.lookup.put(uid, event);
+        }
+      }
+      catch (Exception e)
+      {
+        Logger.error("unable to parse old calendar, will overwrite existing events",e);
+      }
+    }
   }
   
   /**
@@ -116,7 +173,8 @@ public class IcalWriter
    */
   private int add(Manifest mf, AppointmentProvider p, Date from, Date to)
   {
-    int count = 0;
+    int added = 0;
+    int reused = 0;
     
     try
     {
@@ -134,13 +192,14 @@ public class IcalWriter
           
           // Checken, ob's die UID schon gibt. Wenn ja, haengen wir noch
           // einen eigenen Zaehler dran, um sicherzustellen, dass die UID
-          // nie doppelt auftritt.
-          Integer i = uidMap.get(uid);
+          // nie doppelt auftritt. Das kann durchaus oefters passieren.
+          // Z.Bsp. bei sich wiederholenden Auftraegen.
+          Integer i = this.uidMap.get(uid);
           if (i == null) i = 0; // neue UID, vormerken
           else           i = new Integer(i+1); // UID bekannt, Wert erhoehen
           
-          uidMap.put(uid,i);    // neue ID speichern
-          uid = uid + "/" + i;  // an UID anhaengen
+          this.uidMap.put(uid,i); // neue ID speichern
+          uid = uid + "/" + i;    // an UID anhaengen
           
           ve.getProperties().add(new Uid(uid));
           
@@ -150,14 +209,45 @@ public class IcalWriter
 
           if (a.hasAlarm())
           {
-            VAlarm alarm = new VAlarm(new Dur(0,0,-15,0)); // 15 Minuten vorher "-PT15M"
+            VAlarm alarm = new VAlarm(this.createDur(a));
             alarm.getProperties().add(new Description(a.getName()));
             alarm.getProperties().add(Action.DISPLAY);
             ve.getAlarms().add(alarm);
           }
           
+          // mal schauen, ob es fuer den Eintrag was in der alten Datei gab
+          VEvent old = this.lookup.get(uid);
+          if (old != null)
+          {
+            
+            // Jepp. Vergleichen
+            if (this.equals(ve,old))
+            {
+              // alle wichtigen Eigenschaften sind gleich. Wiederverwenden!
+
+              // Die Description ueberschreiben wir generell
+              Description oldDesc = old.getDescription();
+              if (oldDesc != null)
+                old.getProperties().remove(oldDesc);
+              if (desc != null)
+                old.getProperties().add(ve.getDescription());
+                  
+              // Alle anderen Eigenschaften bleiben unberuehrt.
+              this.cal.getComponents().add(old);
+              reused++;
+              Logger.debug("reusing event uid: " + uid);
+              continue;
+            }
+            else
+            {
+              Logger.debug("overwriting event uid: " + uid);
+            }
+        	}
+
+          // kein altes Event gefunden, also neues nehmen
+          Logger.debug("creating event uid: " + uid);
           this.cal.getComponents().add(ve);
-          count++;
+          added++;
         }
         catch (Exception e)
         {
@@ -170,7 +260,115 @@ public class IcalWriter
       Logger.error("error while fetching appointments from " + p.getName(),e);
     }
     
-    return count;
+    return added + reused;
+  }
+  
+  /**
+   * Erzeugt ein passendes Dur-Objekt mit dem Reminder-Offset.
+   * @param a das Appointment fuer das das Reminder-Offset ermittelt werden soll.
+   * @return passendes Dur-Objekt.
+   */
+  private Dur createDur(Appointment a)
+  {
+    int seconds = Appointment.ALARMTIME_SECONDS;
+    if (a instanceof AbstractAppointment)
+      seconds = ((AbstractAppointment)a).getAlarmTime();
+    
+    // Umrechnen in Tage, Stunden, Minuten, Sekunden
+    int d = (int) (TimeUnit.SECONDS.toDays(seconds));
+    int h = (int) (TimeUnit.SECONDS.toHours(seconds) - TimeUnit.DAYS.toHours(d));
+    int m = (int) (TimeUnit.SECONDS.toMinutes(seconds) - TimeUnit.DAYS.toMinutes(d) - TimeUnit.HOURS.toMinutes(h));
+    int s = (int) (TimeUnit.SECONDS.toSeconds(seconds) - TimeUnit.DAYS.toSeconds(d) - TimeUnit.HOURS.toSeconds(h) - TimeUnit.MINUTES.toSeconds(m));
+
+    // Minus-Angaben heisst: Reminder *vor* dem Termin. Also zurueck in der Zeit
+    return new Dur(-d,-h,-m,-s);
+  }
+  
+  /**
+   * Vergleicht 2 Calendar-Events und liefert true, wenn sie hinreichend uebereinstimmen,
+   * dass wir den Termin wiederverwenden koennen.
+   * @param ve1 Event 1.
+   * @param ve2 Event 2.
+   * @return true, wenn sie hinreichend uebereinstimmen.
+   */
+  private boolean equals(VEvent ve1, VEvent ve2)
+  {
+    try
+    {
+      // Pruefen, ob die wichtigen Attribute uebereinstimmen
+      
+      Logger.debug("comparing " + ve1.getUid().getValue() + " to " + ve2.getUid().getValue());
+
+      // Gleiches Datum?
+      if (!ObjectUtils.equals(ve1.getStartDate(),ve2.getStartDate()))
+      {
+        Logger.debug("startdate differs");
+        return false;
+      }
+      
+      // Gleicher Name?
+      if (!ObjectUtils.equals(ve1.getName(),ve2.getName()))
+      {
+        Logger.debug("name differs");
+        return false;
+      }
+
+      // Gleicher Organizer?
+      if (!ObjectUtils.equals(ve1.getOrganizer(),ve2.getOrganizer()))
+      {
+        Logger.debug("organizer differs");
+        return false;
+      }
+      
+      // Alarme vergleichen 
+      ComponentList alarms1 = ve1.getAlarms();
+      ComponentList alarms2 = ve2.getAlarms();
+
+      // Anzahl unterschiedlich
+      if (alarms1.size() != alarms2.size())
+      {
+        Logger.debug("count of alarms differs");
+        return false;
+      }
+
+      // wir haben keine Alarme. Dann passt das schon.
+      if (alarms1.size() == 0)
+      {
+        Logger.debug("0 alarms, equals");
+        return true;
+      }
+
+      // Wir vergleichen nur die Trigger. Die anderen Eigenschaften des Alarms
+      // muessen wir ignorieren, weil sie vom iCal-Client modifiziert werden koennten.
+      // wir vergleichen also nur den ersten
+      Trigger t1 = ((VAlarm) alarms1.get(0)).getTrigger();
+      Trigger t2 = ((VAlarm) alarms2.get(0)).getTrigger();
+      
+      if (t2 == null)
+      {
+        Logger.debug("no trigger, differs");
+        return true;
+      }
+
+      // wir koennen hier nicht direkt die trigger vergleichen,
+      // weil der Mozilla Calendar Trigger so schreibt:
+      // "TRIGGER;VALUE=DURATION:-PT15M"
+      // ical4j aber per Default so: "TRIGGER;-PT15M" 
+      if (!ObjectUtils.equals(t1.getDuration(),t2.getDuration()))
+      {
+        Logger.debug("trigger differs");
+        return false;
+      }
+      
+      // hinreichend gleich
+      Logger.debug("equals");
+      return true;
+    }
+    catch (Exception e)
+    {
+      Logger.error("error while comparing, classify as different",e);
+      return false;
+    }
   }
   
   /**
@@ -198,49 +396,4 @@ public class IcalWriter
       throw new IOException(ve);
     }
   }
-  
 }
-
-
-
-/**********************************************************************
- * $Log: IcalWriter.java,v $
- * Revision 1.8  2012/03/29 20:44:58  willuhn
- * *** empty log message ***
- *
- * Revision 1.7  2012/03/29 20:44:28  willuhn
- * @R Kompatibilitaetscode zu Jameica 2.0 entfernt
- *
- * Revision 1.6  2012/03/28 22:28:12  willuhn
- * @N Einfuehrung eines neuen Interfaces "Plugin", welches von "AbstractPlugin" implementiert wird. Es dient dazu, kuenftig auch Jameica-Plugins zu unterstuetzen, die selbst gar keinen eigenen Java-Code mitbringen sondern nur ein Manifest ("plugin.xml") und z.Bsp. Jars oder JS-Dateien. Plugin-Autoren muessen lediglich darauf achten, dass die Jameica-Funktionen, die bisher ein Object vom Typ "AbstractPlugin" zuruecklieferten, jetzt eines vom Typ "Plugin" liefern.
- * @C "getClassloader()" verschoben von "plugin.getRessources().getClassloader()" zu "manifest.getClassloader()" - der Zugriffsweg ist kuerzer. Die alte Variante existiert weiterhin, ist jedoch als deprecated markiert.
- *
- * Revision 1.5  2011-10-07 11:16:51  willuhn
- * @N Jameica-interne Reminder ebenfalls exportieren
- *
- * Revision 1.4  2011-10-06 10:49:47  willuhn
- * @N Nur noch Provider exportieren, die aktiviert sind - mit Abwaertskompatibilitaet
- *
- * Revision 1.3  2011-01-25 10:17:42  willuhn
- * @B http://www.willuhn.de/blog/index.php?/archives/544-jameica.ical-Termine-aus-Hibiscus-exportieren.html#c1249
- *
- * Revision 1.2  2011-01-20 23:56:18  willuhn
- * @N Scheduler zum automatischen Speichern alle 30 Minuten
- * @C Support fuer leere Kalender-Datei
- *
- * Revision 1.1  2011-01-20 18:37:06  willuhn
- * @N initial checkin
- *
- * Revision 1.4  2011-01-20 00:55:15  willuhn
- * *** empty log message ***
- *
- * Revision 1.3  2011-01-20 00:40:01  willuhn
- * @N Erste funktionierende Version
- *
- * Revision 1.2  2011-01-19 23:26:14  willuhn
- * *** empty log message ***
- *
- * Revision 1.1  2011-01-19 16:59:45  willuhn
- * @N initial import
- *
- **********************************************************************/

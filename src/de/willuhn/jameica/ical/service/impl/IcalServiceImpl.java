@@ -11,9 +11,12 @@
 
 package de.willuhn.jameica.ical.service.impl;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.rmi.RemoteException;
 import java.util.Calendar;
@@ -100,8 +103,6 @@ public class IcalServiceImpl implements IcalService
     if (!dir.exists() && !dir.mkdirs())
       throw new RemoteException("unable to create dir " + dir);
 
-    Logger.info("writing calendar file " + file);
-    
     int range = Settings.getRange();
     Date now  = new Date();
     
@@ -115,14 +116,35 @@ public class IcalServiceImpl implements IcalService
     cal.add(Calendar.MONTH,range);
     Date end = DateUtil.endOfDay(cal.getTime());
     
-    IcalWriter writer = new IcalWriter();
-    writer.addRange(Settings.getPlugins(),start,end);
-    
-    
+    InputStream is = null;
     OutputStream os = null;
+
+    /////////////////////////
+    // Einlesen der Datei, falls sie bereits existiert, um die waehrenddessen durch
+    // den User vorgenommenen Aenderungen zu beruecksichtigen.
+    if (file.exists() && file.canRead())
+    {
+      try
+      {
+        is = new BufferedInputStream(new FileInputStream(file));
+      }
+      catch (Exception e)
+      {
+        // Exception werfen muss nicht unbedingt sein, vielleicht kriegen wir
+        // die Datei ja trotzdem geschrieben. Dann haben wir halt die
+        // existierenden Termine verloren; das macht aber nichts.
+        Logger.error("error while opening file " + file, e);
+      }
+    }
+    //
+    /////////////////////////
     
     try
     {
+      Logger.info("writing calendar file " + file);
+      IcalWriter writer = new IcalWriter(is);
+      writer.addRange(Settings.getPlugins(),start,end);
+      
       // Nein. Wir muessen hier direkt in die Datei schreiben.
       // Sicheres Schreiben (erst in Temp-Datei schreiben, dann
       // alte Datei loeschen und Temp-Datei in neue umbenennen)
@@ -140,26 +162,8 @@ public class IcalServiceImpl implements IcalService
     }
     finally
     {
+      IOUtil.close(is);
       IOUtil.close(os);
     }
   }
 }
-
-
-
-/**********************************************************************
- * $Log: IcalServiceImpl.java,v $
- * Revision 1.2  2011/01/20 23:56:17  willuhn
- * @N Scheduler zum automatischen Speichern alle 30 Minuten
- * @C Support fuer leere Kalender-Datei
- *
- * Revision 1.1  2011-01-20 18:37:06  willuhn
- * @N initial checkin
- *
- * Revision 1.2  2011-01-20 00:40:01  willuhn
- * @N Erste funktionierende Version
- *
- * Revision 1.1  2011-01-19 16:59:45  willuhn
- * @N initial import
- *
- **********************************************************************/
