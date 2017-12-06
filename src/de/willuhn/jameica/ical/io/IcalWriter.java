@@ -21,6 +21,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.ObjectUtils;
+
+import de.willuhn.jameica.gui.calendar.AbstractAppointment;
+import de.willuhn.jameica.gui.calendar.Appointment;
+import de.willuhn.jameica.gui.calendar.AppointmentProvider;
+import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
+import de.willuhn.jameica.gui.calendar.ReminderAppointmentProvider;
+import de.willuhn.jameica.plugin.Manifest;
+import de.willuhn.jameica.plugin.Plugin;
+import de.willuhn.jameica.services.BeanService;
+import de.willuhn.jameica.system.Application;
+import de.willuhn.logging.Logger;
 import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
@@ -34,22 +46,10 @@ import net.fortuna.ical4j.model.property.CalScale;
 import net.fortuna.ical4j.model.property.Description;
 import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.ProdId;
+import net.fortuna.ical4j.model.property.Summary;
 import net.fortuna.ical4j.model.property.Trigger;
 import net.fortuna.ical4j.model.property.Uid;
 import net.fortuna.ical4j.model.property.Version;
-
-import org.apache.commons.lang.ObjectUtils;
-
-import de.willuhn.jameica.gui.calendar.AbstractAppointment;
-import de.willuhn.jameica.gui.calendar.Appointment;
-import de.willuhn.jameica.gui.calendar.AppointmentProvider;
-import de.willuhn.jameica.gui.calendar.AppointmentProviderRegistry;
-import de.willuhn.jameica.gui.calendar.ReminderAppointmentProvider;
-import de.willuhn.jameica.plugin.Manifest;
-import de.willuhn.jameica.plugin.Plugin;
-import de.willuhn.jameica.services.BeanService;
-import de.willuhn.jameica.system.Application;
-import de.willuhn.logging.Logger;
 
 /**
  * Wir kapseln hier die Ical-Implementierung, damit wir sie bei Bedarf ersetzen koennen.
@@ -225,12 +225,21 @@ public class IcalWriter
             {
               // alle wichtigen Eigenschaften sind gleich. Wiederverwenden!
 
-              // Die Description ueberschreiben wir generell
+              // Summary und Description ueberschreiben wir generell
               Description oldDesc = old.getDescription();
-              if (oldDesc != null)
-                old.getProperties().remove(oldDesc);
               if (desc != null)
+              {
+                if (oldDesc != null)
+                  old.getProperties().remove(oldDesc);
+                
                 old.getProperties().add(ve.getDescription());
+              }
+              
+              Summary oldSum = old.getSummary();
+              if (oldSum != null)
+                old.getProperties().remove(oldSum);
+              
+              old.getProperties().add(new Summary(a.getName()));
                   
               // Alle anderen Eigenschaften bleiben unberuehrt.
               this.cal.getComponents().add(old);
