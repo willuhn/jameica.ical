@@ -11,7 +11,6 @@
     <loadproperties srcFile="${build.dir}/build.properties"/>
 
     <echo message="VERSION: ${plugin.version}" />
-    <echo message="TAG    : ${tag}" />
     <echo message="JAVA   : ${java.version}" />
 
 		<property name="define.jarfilename" 		value="${plugin.name}.jar" />
